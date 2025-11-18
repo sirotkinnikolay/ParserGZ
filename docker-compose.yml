@@ -9,12 +9,13 @@ services:
       - OTHER_ENV=${OTHER_ENV}
     ports:
       - "8000:80"   # внешний порт 8000 -> внутренний 80
-    volumes:  # TODO: на проде удалить
+    volumes:
       - .:/usr/src/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 80 --reload  # TODO: на проде удалить
     depends_on:
       - db
-    restart: unless-stopped
+#    restart: unless-stopped
+    restart: "no"
+
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
       interval: 30s
@@ -35,7 +36,7 @@ services:
     ports:
       - "5433:5432"
     restart: "no"
-    # restart: unless-stopped  TODO: НА ПРОДЕ РАСКОМЕННИРОВАТЬ
+    # restart: unless-stopped
 
 volumes:
   db_data:

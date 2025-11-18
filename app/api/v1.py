@@ -1,4 +1,3 @@
-# app/api/v1.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app import models, schemas, crud
@@ -16,5 +15,5 @@ def create_user(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
 @router.get("/users")
 def list_users(db: Session = Depends(get_db)):
     if not crud.get_users(db):
-        return 'No users'
+        return 'No users in DB'
     return crud.get_users(db)

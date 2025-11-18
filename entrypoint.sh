@@ -1,7 +1,6 @@
 #!/bin/sh
 alembic upgrade head
 
-# Наконец запускаем приложение
 # Для разработки с авто-reload:
 exec uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
 
