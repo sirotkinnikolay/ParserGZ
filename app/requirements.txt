@@ -23,3 +23,5 @@ sqlalchemy==1.4.49
 alembic==1.11.1
 psycopg2-binary==2.9.7
 passlib==1.7.4
+selenium
+webdriver-manager

@@ -7,14 +7,14 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - OTHER_ENV=${OTHER_ENV}
+      - SELENIUM_URL=${SELENIUM_URL}
     ports:
       - "8000:80"   # внешний порт 8000 -> внутренний 80
     volumes:
       - .:/usr/src/app
     depends_on:
       - db
-#    restart: unless-stopped
-    restart: "no"
+    restart: unless-stopped
 
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
@@ -35,8 +35,18 @@ services:
       - db_data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
-    restart: "no"
-    # restart: unless-stopped
+    restart: unless-stopped
+
+  selenium:
+    image: selenium/standalone-chrome:latest
+    container_name: selenium_chrome
+    shm_size: '2gb'
+    ports:
+      - "4444:4444"
+    environment:
+      SE_NODE_MAX_SESSIONS: 1
+      SE_NODE_SESSION_TIMEOUT: 300
+    restart: "unless-stopped"
 
 volumes:
   db_data:
