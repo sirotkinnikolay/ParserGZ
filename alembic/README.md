@@ -6,5 +6,5 @@ Generic single-database configuration.
 4. Остановить все контейнеры  `docker compose down`
 5. Сборка контейнера  `docker compose build --no-cache`
 6. Запуск контейнера  `docker compose up -d`
-7. Просмотр логов приложения  `docker compose logs -f --timestamps app` или `db`
+7. Просмотр логов приложения  `docker compose logs -f --timestamps app` (`db`, `selenium`)
 8. Если возникли проблемы с остановкой и удалением контейнера: `sudo aa-remove-unknown` 

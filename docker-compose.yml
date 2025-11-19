@@ -8,14 +8,19 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - OTHER_ENV=${OTHER_ENV}
       - SELENIUM_URL=${SELENIUM_URL}
+      - DRIVER_POOL_SIZE=${DRIVER_POOL_SIZE}
+      - SELENIUM_REMOTE=${SELENIUM_REMOTE}
+      - DRIVER_CREATE_RETRIES=${DRIVER_CREATE_RETRIES}
+      - DRIVER_CREATE_RETRY_DELAY=${DRIVER_CREATE_RETRY_DELAY}
+      - DRIVER_IMPLICIT_WAIT=${DRIVER_IMPLICIT_WAIT}
     ports:
       - "8000:80"   # внешний порт 8000 -> внутренний 80
     volumes:
       - .:/usr/src/app
     depends_on:
       - db
+      - selenium
     restart: unless-stopped
-
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
       interval: 30s
@@ -36,6 +41,11 @@ services:
     ports:
       - "5433:5432"
     restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   selenium:
     image: selenium/standalone-chrome:latest
@@ -43,10 +53,19 @@ services:
     shm_size: '2gb'
     ports:
       - "4444:4444"
-    environment:
-      SE_NODE_MAX_SESSIONS: 1
-      SE_NODE_SESSION_TIMEOUT: 300
+
     restart: "unless-stopped"
+    environment:
+      - SE_NODE_MAX_SESSIONS=20
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
+      - SE_SESSION_RETRY_INTERVAL=1
+      - SE_SESSION_REQUEST_TIMEOUT=300
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:4444/wd/hub/status" ]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
 
 volumes:
   db_data:

@@ -1,1 +1,1 @@
-from .driver import get_driver
+from .dependencies import get_driver

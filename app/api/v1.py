@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+import time
 from app import models, schemas, crud
 from app.deps import get_db
-from app.driver import get_driver
+from app.dependencies import get_driver, driver_pool
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
+n = '\n'
 
 """
 ----------- Производительность и ресурсы -----------
@@ -29,15 +31,56 @@ def create_user(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
 
 @router.get("/district")
 def use_driver(driver: WebDriver = Depends(get_driver)):
+    info = {}
     try:
         driver.get("https://gorzdrav.spb.ru/service-free-schedule")
         wait = WebDriverWait(driver, 10)
         district_buttons = wait.until(
-            EC.presence_of_all_elements_located((By.XPATH,
-                '/html/body/div/div[1]/div[12]/div[3]/div[1]/div[2]/div[1]/div/div[1]/ul/li'
-            ))
+            EC.presence_of_all_elements_located(
+                (By.XPATH, '/html/body/div/div[1]/div[12]/div[3]/div[1]/div[2]/div[1]/div/div[1]/ul/li')
+            )
         )
-        district_buttons_texts = [btn.text for btn in district_buttons]
-        return {"district_buttons": district_buttons_texts}
+        total_districts = len(district_buttons)
+        for i in range(total_districts):
+            try:
+                # В КАЖДОЙ итерации заново находим все элементы
+                district_buttons = wait.until(
+                    EC.presence_of_all_elements_located(
+                        (By.XPATH, '/html/body/div/div[1]/div[12]/div[3]/div[1]/div[2]/div[1]/div/div[1]/ul/li')
+                    )
+                )
+
+                if i < len(district_buttons):
+                    district_name = district_buttons[i].text
+                    district_buttons[i].click()
+                    clinic_list = wait.until(
+                        EC.presence_of_all_elements_located((By.XPATH, '//*[@id="serviceMoOutput"]/div'))
+                    )
+
+                    clinics = [clinic.text.split('\n', 1)[0] for clinic in clinic_list]
+                    driver.back()
+                    wait.until(
+                        EC.presence_of_element_located(
+                            (By.XPATH, '/html/body/div/div[1]/div[12]/div[3]/div[1]/div[2]/div[1]/div/div[1]/ul')
+                        )
+                    )
+                    if len(district_name) > 1:
+                        info[district_name] = clinics
+            except Exception as e:
+                print(f"Ошибка при обработке района {i + 1}: {e}")
+                driver.get("https://gorzdrav.spb.ru/service-free-schedule")
+                continue
+
+        return {"district_buttons": info}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/driver-pool")
+async def get_driver_pool_stats():
+    """Эндпоинт для проверки статуса пула драйверов"""
+    return {
+        "status": "ok",
+        "pool_stats": driver_pool.get_stats(),
+        "timestamp": time.time()
+    }
