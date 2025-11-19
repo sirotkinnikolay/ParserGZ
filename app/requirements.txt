@@ -26,3 +26,4 @@ passlib==1.7.4
 selenium
 webdriver-manager
 pydantic-settings
+aiokafka

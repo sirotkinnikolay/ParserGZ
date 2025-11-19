@@ -26,6 +26,8 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    networks:
+      - kafka-network
 
   db:
     image: postgres:14
@@ -46,6 +48,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    networks:
+      - kafka-network
 
   selenium:
     image: selenium/standalone-chrome:latest
@@ -66,6 +70,57 @@ services:
       timeout: 10s
       retries: 10
       start_period: 10s
+    networks:
+      - kafka-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+      - ZOOKEEPER_TICK_TIME=2000
+    ports:
+      - "2181:2181"
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8080/commands/ruok || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - kafka-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+
+    restart: unless-stopped
+    volumes:
+      - ./create-topics.sh:/create-topics.sh
+    entrypoint: [
+      "/bin/sh",
+      "-c",
+      "chmod +x /create-topics.sh && sleep 20 && /create-topics.sh & /etc/confluent/docker/run"
+    ]
+    networks:
+      - kafka-network
+
+networks:
+  kafka-network:
+    driver: bridge
 
 volumes:
   db_data:
