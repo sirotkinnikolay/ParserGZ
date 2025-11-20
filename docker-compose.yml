@@ -1,8 +1,10 @@
 services:
-  app:
-    build: .
-    image: fastapi-app:latest
-    container_name: fastapi_app
+  parser_service:
+    build:
+      context: ./parser-service
+      dockerfile: Dockerfile
+    image: parser-service:latest
+    container_name: parser_service
     env_file: .env
     environment:
       - DATABASE_URL=${DATABASE_URL}
@@ -14,9 +16,10 @@ services:
       - DRIVER_CREATE_RETRY_DELAY=${DRIVER_CREATE_RETRY_DELAY}
       - DRIVER_IMPLICIT_WAIT=${DRIVER_IMPLICIT_WAIT}
     ports:
-      - "8000:80"   # внешний порт 8000 -> внутренний 80
+      - "8000:80"
+    # В dev: можно монтировать только исходники parser-service (если хотите live edit)
     volumes:
-      - .:/usr/src/app
+      - ./parser-service:/usr/src/app
     depends_on:
       - db
       - selenium
@@ -29,6 +32,38 @@ services:
     networks:
       - kafka-network
 
+  api_gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    image: api-gateway:latest
+    container_name: api_gateway
+    env_file: .env
+    ports:
+      - "8080:80"
+    volumes:
+      - ./api-gateway/src:/usr/src/app
+    depends_on:
+      - parser_service
+    restart: unless-stopped
+    networks:
+      - kafka-network
+
+  new_service:
+    build:
+      context: ./new-service
+      dockerfile: Dockerfile
+    image: new-service:latest
+    container_name: new_service
+    env_file: .env
+    ports:
+      - "8001:80"
+    volumes:
+      - ./new-service/src:/usr/src/app
+    restart: unless-stopped
+    networks:
+      - kafka-network
+
   db:
     image: postgres:14
     container_name: fastapi_db
@@ -37,7 +72,6 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
-      - DATABASE_URL=${DATABASE_URL}
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
@@ -57,8 +91,7 @@ services:
     shm_size: '2gb'
     ports:
       - "4444:4444"
-
-    restart: "unless-stopped"
+    restart: unless-stopped
     environment:
       - SE_NODE_MAX_SESSIONS=20
       - SE_NODE_OVERRIDE_MAX_SESSIONS=true
@@ -106,7 +139,6 @@ services:
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
       - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-
     restart: unless-stopped
     volumes:
       - ./create-topics.sh:/create-topics.sh

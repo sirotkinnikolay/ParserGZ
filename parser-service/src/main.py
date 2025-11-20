@@ -1,8 +1,7 @@
-import os
 from pathlib import Path
 from fastapi import FastAPI
-from app.api.v1 import router as v1_router
-from app.dependencies import driver_pool
+from .api.v1 import router as v1_router
+from .dependencies import driver_pool
 
 
 app = FastAPI(

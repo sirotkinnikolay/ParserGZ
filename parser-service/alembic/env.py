@@ -20,8 +20,8 @@ sys.path.append(
 )
 
 # Теперь можно импортировать модули приложения
-from app.db import Base
-from app import models   # важно: импорт моделей, чтобы Alembic увидел таблицы
+from src.db import Base
+from src import models   # важно: импорт моделей, чтобы Alembic увидел таблицы
 
 # -----------------------------------------------------------------------------
 # Конфигурация Alembic

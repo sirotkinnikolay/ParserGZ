@@ -1,4 +1,3 @@
-Generic single-database configuration.
 Создание миграций при изменении/добавлении моделей
 1. Запустить контейнер  `docker compose up -d`
 2. Сделать миграции  `docker compose exec app alembic revision --autogenerate -m "add user table"`
@@ -7,7 +6,8 @@ Generic single-database configuration.
 5. Удалить все контейнеры  `docker compose down`
 6. Сборка контейнера  `docker compose build --no-cache`
 7. Запуск контейнера  `docker compose up -d`
-8. Просмотр логов приложения  `docker compose logs -f --timestamps app` (`db`, `selenium`)
+8. Просмотр логов приложения  `docker compose logs -f --timestamps parser_service` 
+   (`db`, `api_gateway`, `new_service`, `zookeeper`, `kafka`, `selenium`)
 9. Если возникли проблемы с остановкой и удалением контейнера: `sudo aa-remove-unknown` 
 
 
@@ -26,3 +26,6 @@ kafka-topics --bootstrap-server localhost:9092 --list
 
 # Описать топик
 kafka-topics --bootstrap-server localhost:9092 --describe --topic user-events
+
+# Подключиться к контейнеру и запустить psql
+docker compose exec db psql -U fastapi_user -d fastapidb

@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import time
-from app import models, schemas, crud
-from app.deps import get_db
-from app.dependencies import get_driver, driver_pool
+from .. import schemas, crud
+from ..deps import get_db
+from ..dependencies import get_driver, driver_pool
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
@@ -41,6 +41,8 @@ def use_driver(driver: WebDriver = Depends(get_driver)):
             )
         )
         total_districts = len(district_buttons)
+        print(f'========> {total_districts}')
+
         for i in range(total_districts):
             try:
                 # В КАЖДОЙ итерации заново находим все элементы
@@ -52,6 +54,8 @@ def use_driver(driver: WebDriver = Depends(get_driver)):
 
                 if i < len(district_buttons):
                     district_name = district_buttons[i].text
+                    print(f'========> {district_name}')
+
                     district_buttons[i].click()
                     clinic_list = wait.until(
                         EC.presence_of_all_elements_located((By.XPATH, '//*[@id="serviceMoOutput"]/div'))
