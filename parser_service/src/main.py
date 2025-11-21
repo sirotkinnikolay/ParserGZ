@@ -1,11 +1,22 @@
+import logging
+import sys
 from pathlib import Path
 from fastapi import FastAPI
 from .api.v1 import router as v1_router
 from .dependencies import driver_pool
+from logging.handlers import RotatingFileHandler
 
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        RotatingFileHandler('parser_service.log', maxBytes=1024 * 1024, backupCount=3,  encoding='utf-8')
+    ]
+)
 app = FastAPI(
-    title="Selenium Pool API",
+    title="API Parser Service",
     description="API с пулом переиспользуемых Selenium драйверов",
     version="1.0.0"
 )

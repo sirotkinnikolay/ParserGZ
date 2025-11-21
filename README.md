@@ -29,3 +29,6 @@ kafka-topics --bootstrap-server localhost:9092 --describe --topic user-events
 
 # Подключиться к контейнеру и запустить psql
 docker compose exec db psql -U fastapi_user -d fastapidb
+
+# Построение дерева приложений
+tree -I '__pycache__|*.pyc|.git|.venv|.idea'

@@ -4,13 +4,15 @@ import time
 from contextlib import asynccontextmanager
 from asyncio import Semaphore
 from typing import List, Optional
-
+import logging
 from selenium import webdriver
 from selenium.webdriver import Chrome
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -45,13 +47,13 @@ class AsyncDriverPool:
 
         # Запускаем инициализацию в фоне, не блокируя запуск приложения
         self._initialization_task = asyncio.create_task(self._initialize_background())
-        print("🔄 Фоновая инициализация пула драйверов запущена...")
+        logger.info("🔄 Фоновая инициализация пула драйверов запущена...")
 
     async def _initialize_background(self):
         """Фоновая инициализация пула"""
         async with self._lock:
             if not self._initialized:
-                print(f"🔄 Инициализация пула из {self.pool_size} драйверов в фоне...")
+                logger.info(f"🔄 Инициализация пула из {self.pool_size} драйверов в фоне...")
 
                 # Ждем доступность Selenium если используем remote
                 if self.selenium_remote:
@@ -61,7 +63,7 @@ class AsyncDriverPool:
                 await self._create_all_drivers_parallel()
 
                 self._initialized = True
-                print(f"✅ Пул драйверов инициализирован ({len(self._drivers)}/{self.pool_size} драйверов)")
+                logger.info(f"✅ Пул драйверов инициализирован ({len(self._drivers)}/{self.pool_size} драйверов)")
 
     async def _create_all_drivers_parallel(self):
         """Создает все драйверы параллельно"""
@@ -79,11 +81,11 @@ class AsyncDriverPool:
         successful = 0
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                print(f"❌ Не удалось создать драйвер {i + 1}: {result}")
+                logger.error(f"❌ Не удалось создать драйвер {i + 1}: {result}")
             else:
                 successful += 1
 
-        print(f"✅ {successful}/{self.pool_size} драйверов создано")
+        logger.info(f"✅ {successful}/{self.pool_size} драйверов создано")
 
     async def _create_single_driver(self, index: int):
         """Создает один драйвер"""
@@ -92,10 +94,10 @@ class AsyncDriverPool:
                 None, self._create_driver_with_retries
             )
             self._drivers.append(driver)
-            print(f"✅ Создан драйвер {index + 1}/{self.pool_size}")
+            logger.info(f"✅ Создан драйвер {index + 1}/{self.pool_size}")
             return driver
         except Exception as e:
-            print(f"❌ Ошибка создания драйвера {index + 1}: {e}")
+            logger.error(f"❌ Ошибка создания драйвера {index + 1}: {e}")
             raise
 
     async def _wait_for_selenium(self, timeout: int = 60):
@@ -103,7 +105,7 @@ class AsyncDriverPool:
         import requests
         from requests.exceptions import RequestException
 
-        print("⏳ Ожидание доступности Selenium...")
+        logger.info("⏳ Ожидание доступности Selenium...")
         start_time = time.time()
 
         while time.time() - start_time < timeout:
@@ -112,15 +114,15 @@ class AsyncDriverPool:
                 if response.status_code == 200:
                     data = response.json()
                     if data.get('value', {}).get('ready', False):
-                        print("✅ Selenium готов к работе")
+                        logger.info("✅ Selenium готов к работе")
                         return
             except RequestException:
                 pass
 
-            print("⏳ Selenium недоступен, повторная попытка через 3 секунды...")
+            logger.info("⏳ Selenium недоступен, повторная попытка через 3 секунды...")
             await asyncio.sleep(3)
 
-        print("⚠️ Selenium не стал доступен в течение таймаута, продолжаем с ретраями...")
+        logger.info("⚠️ Selenium не стал доступен в течение таймаута, продолжаем с ретраями...")
 
     def _create_driver_with_retries(self) -> Chrome:
         last_exc: Optional[Exception] = None
@@ -129,7 +131,7 @@ class AsyncDriverPool:
                 return self._create_driver()
             except Exception as e:
                 last_exc = e
-                print(f"⚠️ Попытка {i}/{self._create_retries} создать драйвер не удалась: {e}")
+                logger.error(f"⚠️ Попытка {i}/{self._create_retries} создать драйвер не удалась: {e}")
                 if i < self._create_retries:
                     time.sleep(self._create_retry_delay)
         # если все ретраи не помогли — бросаем последнее исключение
@@ -187,13 +189,13 @@ class AsyncDriverPool:
 
         except Exception as e:
             # Более информативный лог
-            print(f"❌ Ошибка создания драйвера: {e}")
+            logger.error(f"❌ Ошибка создания драйвера: {e}")
             # Если в локальном режиме — вероятно отсутствует бинарь Chrome или зависимости => сообщаем
             if not self.selenium_remote:
-                print(
+                logger.info(
                     "   -> Локальный режим включён (SELENIUM_REMOTE=false). Убедитесь, что в контейнере установлен Google Chrome и его зависимости.")
             else:
-                print(
+                logger.info(
                     f"   -> Remote режим: пытались подключиться к {self.selenium_url}. Убедитесь, что selenium standalone доступен.")
             raise
 
@@ -242,9 +244,9 @@ class AsyncDriverPool:
                 None, self._create_driver_with_retries
             )
             self._drivers.append(driver)
-            print("✅ Создан драйвер по требованию")
+            logger.info("✅ Создан драйвер по требованию")
         except Exception as e:
-            print(f"❌ Не удалось создать драйвер по требованию: {e}")
+            logger.error(f"❌ Не удалось создать драйвер по требованию: {e}")
             raise
 
     async def _clean_driver(self, driver: Chrome):
@@ -255,7 +257,7 @@ class AsyncDriverPool:
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(None, self._sync_clean_driver, driver)
         except Exception as e:
-            print(f"⚠️ Ошибка очистки драйвера: {e}")
+            logger.error(f"⚠️ Ошибка очистки драйвера: {e}")
 
     def _sync_clean_driver(self, driver: Chrome):
         """Синхронная очистка драйвера"""
@@ -281,7 +283,7 @@ class AsyncDriverPool:
                 pass
 
         except Exception as e:
-            print(f"⚠️ Ошибка при очистке драйвера: {e}")
+            logger.error(f"⚠️ Ошибка при очистке драйвера: {e}")
             # Если драйвер сломан, заменяем его
             self._replace_broken_driver(driver)
 
@@ -296,13 +298,13 @@ class AsyncDriverPool:
         try:
             new_driver = self._create_driver()
             self._drivers.append(new_driver)
-            print("✅ Сломанный драйвер заменен")
+            logger.info("✅ Сломанный драйвер заменен")
         except Exception as e:
-            print(f"❌ Не удалось заменить сломанный драйвер: {e}")
+            logger.error(f"❌ Не удалось заменить сломанный драйвер: {e}")
 
     async def close_all(self):
         """Закрытие всех драйверов при завершении приложения"""
-        print("🔄 Закрытие пула драйверов...")
+        logger.info("🔄 Закрытие пула драйверов...")
 
         # Отменяем задачу инициализации если она есть
         if self._initialization_task and not self._initialization_task.done():
@@ -321,13 +323,13 @@ class AsyncDriverPool:
             try:
                 driver.quit()
             except Exception as e:
-                print(f"⚠️ Ошибка закрытия драйвера: {e}")
+                logger.error(f"⚠️ Ошибка закрытия драйвера: {e}")
 
         self._drivers.clear()
         self._initialized = False
         self._initialization_task = None
         self._drivers_creation_tasks.clear()
-        print("✅ Пул драйверов закрыт")
+        logger.info("✅ Пул драйверов закрыт")
 
     def get_stats(self):
         """Возвращает статистику пула"""

@@ -10,7 +10,7 @@ topics=(
 
 for topic in "${topics[@]}"; do
   IFS=':' read -r name partitions replication <<< "$topic"
-  kafka-topics --bootstrap-server localhost:9092 \
+  kafka_actions-topics --bootstrap-server localhost:9092 \
     --create \
     --topic "$name" \
     --partitions "$partitions" \
